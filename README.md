@@ -79,20 +79,21 @@ Contiene la lista de palabras disponibles:
 ```json
 {
   "palabras": [
-    "traductor",
-    "empleado",
-    "relojero",
-    "atleta",
-    "astronauta",
-    "conductor",
-    "joyero",
-    "cirujano",
-    "fotógrafo",
-    "modista",
-    "juez",
+    "modulo",
+    "programa",
+    "socket",
+    "web",
+    "computador",
+    "backend",
+    "frontend",
+    "maquina",
+    "paralela",
+    "hilos",
+    "servidor",
     "modelo"
   ]
 }
+
 ```
 
 Puedes agregar o cambiar palabras según necesites.
