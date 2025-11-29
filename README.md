@@ -316,23 +316,7 @@ En `palabras.json`:
 
 ---
 
-## 🚢 Despliegue en la Nube
 
-### Opción 1: Render (Recomendado)
-1. Sube el proyecto a GitHub
-2. Crea cuenta en **render.com**
-3. Conecta tu repositorio
-4. Selecciona "Node" como servicio
-5. Deploy automático
-
-### Opción 2: Heroku
-```bash
-heroku login
-heroku create tu-nombre-app
-git push heroku main
-```
-
----
 
 ## 📚 Tecnologías Utilizadas
 
@@ -376,58 +360,3 @@ console.log(socket);
 
 ---
 
-## 📄 Licencia
-
-Este proyecto es educativo y de código abierto.
-
----
-
-## 🎓 Aprendizajes Clave
-
-Este proyecto enseña:
-
-✅ Comunicación en tiempo real con WebSockets  
-✅ Arquitectura cliente-servidor  
-✅ Validación de datos en servidor (seguridad)  
-✅ Generación de contenido dinámico  
-✅ Manejo de eventos  
-✅ Algoritmos de búsqueda  
-✅ Interfaz responsiva  
-
----
-
-## 🤝 Contribuciones
-
-¿Ideas para mejorar el juego?
-
-- Agregar niveles de dificultad
-- Soporte multijugador en vivo
-- Rankings y puntuaciones
-- Diferentes idiomas
-- Modo de entrenamiento
-
----
-
-## 📞 Contacto
-
-Para preguntas o sugerencias sobre el desarrollo:
-
-- Documentación: Ver comentarios en el código
-- Errores: Revisa la consola del servidor y del navegador
-
----
-
-## ✨ Características Futuras
-
-- [ ] Sistema de puntuaciones
-- [ ] Multiplicadores de tiempo
-- [ ] Dificultades (Fácil, Medio, Difícil)
-- [ ] Modos de juego especiales
-- [ ] Chat entre jugadores
-- [ ] Leaderboard global
-- [ ] Soporte para más idiomas
-- [ ] Temas de color personalizables
-
----
-
-**¡Disfruta jugando y aprendiendo!** 🎮✨
