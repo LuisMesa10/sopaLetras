@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🎮 Sopa de Letras</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        padding: 30px;
+        max-width: 1000px;
+        width: 100%;
+      }
+
+      h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+        font-size: 2.5em;
+      }
+
+      .inicio {
+        text-align: center;
+        display: none;
+      }
+
+      .inicio input {
+        padding: 12px 20px;
+        font-size: 1em;
+        border: 2px solid #667eea;
+        border-radius: 6px;
+        width: 100%;
+        max-width: 300px;
+        margin-bottom: 15px;
+      }
+
+      .inicio button {
+        padding: 12px 40px;
+        font-size: 1.1em;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+
+      .inicio button:hover {
+        background: #5568d3;
+      }
+
+      .juego {
+        display: none;
+      }
+
+      .controles {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+
+      .info {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+      }
+
+      .info-item {
+        font-size: 1.1em;
+        color: #555;
+      }
+
+      .cronometro {
+        font-weight: bold;
+        color: #667eea;
+        font-size: 1.3em;
+      }
+
+      .botones {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .botones button {
+        padding: 10px 20px;
+        font-size: 1em;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-weight: 600;
+      }
+
+      .btn-validar {
+        background: #3498db;
+        color: white;
+      }
+
+      .btn-validar:hover:not(:disabled) {
+        background: #2980b9;
+        transform: scale(1.05);
+      }
+
+      .btn-validar:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+
+      .btn-limpiar {
+        background: #e74c3c;
+        color: white;
+      }
+
+      .btn-limpiar:hover:not(:disabled) {
+        background: #c0392b;
+        transform: scale(1.05);
+      }
+
+      .btn-limpiar:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+
+      .btn-resolver {
+        background: #f39c12;
+        color: white;
+      }
+
+      .btn-resolver:hover {
+        background: #e67e22;
+      }
+
+      .btn-nueva {
+        background: #27ae60;
+        color: white;
+      }
+
+      .btn-nueva:hover {
+        background: #229954;
+      }
+
+      .info-seleccion {
+        font-size: 0.95em;
+        color: #667eea;
+        font-weight: bold;
+        background: #f0f4ff;
+        padding: 8px 12px;
+        border-radius: 6px;
+        min-width: 150px;
+        text-align: center;
+        border: 2px solid #667eea;
+      }
+
+      .tablero-container {
+        display: flex;
+        gap: 30px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+      }
+
+      .tablero {
+        display: grid;
+        grid-template-columns: repeat(12, 30px);
+        gap: 2px;
+        background: #ecf0f1;
+        padding: 10px;
+        border-radius: 8px;
+      }
+
+      .celda {
+        width: 30px;
+        height: 30px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: white;
+        border: 1px solid #bdc3c7;
+        cursor: pointer;
+        font-weight: bold;
+        user-select: none;
+        transition: all 0.2s;
+        border-radius: 4px;
+        font-size: 0.9em;
+      }
+
+      .celda:hover {
+        background: #e8f4f8;
+        border-color: #667eea;
+        transform: scale(1.1);
+      }
+
+      .celda.seleccionada {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+        box-shadow: 0 0 8px #667eea;
+      }
+
+      .celda.encontrada {
+        background: #27ae60;
+        color: white;
+        border-color: #27ae60;
+        box-shadow: 0 0 8px #27ae60;
+      }
+
+      .palabras-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-width: 200px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      .palabras-titulo {
+        font-weight: bold;
+        font-size: 1.1em;
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .palabra-item {
+        padding: 10px 12px;
+        background: #ecf0f1;
+        border-radius: 6px;
+        font-size: 0.95em;
+        color: #555;
+        text-decoration: none;
+        transition: all 0.3s;
+        border: 2px solid transparent;
+      }
+
+      .palabra-item:hover {
+        background: #bdc3c7;
+        cursor: pointer;
+        border: 2px solid #667eea;
+      }
+
+      .palabra-item.encontrada {
+        background: #27ae60;
+        color: white;
+        text-decoration: line-through;
+        border: 2px solid #27ae60;
+      }
+
+      .mensaje {
+        padding: 15px;
+        border-radius: 6px;
+        margin-top: 15px;
+        text-align: center;
+        font-weight: bold;
+        display: none;
+        animation: slideIn 0.3s ease-out;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .mensaje.exito {
+        background: #d4edda;
+        color: #155724;
+        border: 2px solid #28a745;
+        display: block;
+      }
+
+      .mensaje.error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 2px solid #f5c6cb;
+        display: block;
+      }
+
+      .instrucciones {
+        background: #e7f3ff;
+        border-left: 4px solid #3498db;
+        padding: 15px;
+        margin-top: 15px;
+        border-radius: 6px;
+        font-size: 0.95em;
+        color: #333;
+      }
+
+      .instrucciones h3 {
+        color: #3498db;
+        margin-bottom: 10px;
+      }
+
+      @media (max-width: 768px) {
+        .tablero {
+          grid-template-columns: repeat(10, 25px);
+        }
+
+        .celda {
+          width: 25px;
+          height: 25px;
+          font-size: 0.8em;
+        }
+
+        .tablero-container {
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .controles {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .info {
+          width: 100%;
+          justify-content: space-between;
+        }
+
+        .botones {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎮 Sopa de Letras</h1>
+
+      <!-- Pantalla inicial -->
+      <div id="pantallaInicio" class="inicio" style="display: block">
+        <h2 style="margin-bottom: 20px">Bienvenido al Juego</h2>
+        <input
+          type="text"
+          id="nombreJugador"
+          placeholder="Ingresa tu nombre"
+          value="Jugador"
+        />
+        <button onclick="iniciarJuego()">▶️ Iniciar Juego</button>
+
+        <div class="instrucciones" style="margin-top: 30px">
+          <h3>📋 Cómo jugar:</h3>
+          <ul style="margin-left: 20px">
+            <li>Haz clic en las letras para seleccionarlas en orden</li>
+            <li>
+              Las letras deben ser contiguas (horizontales, verticales o
+              diagonales)
+            </li>
+            <li>Presiona "✓ Validar" para enviar tu palabra al servidor</li>
+            <li>
+              Si es correcta, se mostrará en
+              <span style="color: #27ae60; font-weight: bold">VERDE</span>
+            </li>
+            <li>Usa "✕ Limpiar" para borrar la selección actual</li>
+            <li>Presiona "🔓 Resolver" para ver todas las respuestas</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Pantalla de juego -->
+      <div id="pantallaJuego" class="juego">
+        <div class="controles">
+          <div class="info">
+            <div class="info-item">
+              👤 <strong><span id="nombreMostrado">-</span></strong>
+            </div>
+            <div class="info-item">
+              ⏱️ <span class="cronometro" id="cronometro">00:00</span>
+            </div>
+            <div class="info-item">
+              📍 Encontradas:
+              <strong
+                ><span id="contadorPalabras">0</span>/<span id="totalPalabras"
+                  >0</span
+                ></strong
+              >
+            </div>
+          </div>
+          <div class="botones">
+            <div class="info-seleccion">
+              📌 Seleccionadas:
+              <strong><span id="contadorSeleccion">0</span></strong>
+            </div>
+            <button
+              class="btn-validar"
+              onclick="validarSeleccion()"
+              id="btnValidar"
+              disabled
+            >
+              ✓ Validar
+            </button>
+            <button
+              class="btn-limpiar"
+              onclick="limpiarSeleccion()"
+              id="btnLimpiar"
+              disabled
+            >
+              ✕ Limpiar
+            </button>
+            <button class="btn-resolver" onclick="resolverJuego()">
+              🔓 Resolver
+            </button>
+            <button class="btn-nueva" onclick="iniciarNuevoJuego()">
+              🔄 Nuevo
+            </button>
+          </div>
+        </div>
+
+        <div id="mensaje" class="mensaje"></div>
+
+        <div class="tablero-container">
+          <div id="tablero" class="tablero"></div>
+          <div id="listaPalabras" class="palabras-sidebar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Socket.IO cliente -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+    <script>
+      // ====== CONFIGURACIÓN ======
+      const socket = io();
+      let juego = {
+        tablero: [],
+        palabras: [],
+        palabrasEncontradas: [],
+        palabrasCoord: {},
+        seleccion: [],
+        tiempoInicio: null,
+        cronometroIntervalo: null,
+      };
+
+      // ====== EVENTOS DE SOCKET ======
+
+      socket.on("connect", () => {
+        console.log("✅ Conectado al servidor");
+      });
+
+      socket.on("juego_iniciado", (data) => {
+        console.log("🎮 Juego iniciado por servidor");
+        juego.tablero = data.tablero;
+        juego.palabras = data.palabras;
+        juego.tiempoInicio = data.tiempoInicio;
+        juego.palabrasEncontradas = [];
+        juego.palabrasCoord = {};
+        juego.seleccion = [];
+
+        document.getElementById("pantallaInicio").style.display = "none";
+        document.getElementById("pantallaJuego").style.display = "block";
+        document.getElementById("nombreMostrado").textContent =
+          document.getElementById("nombreJugador").value;
+        document.getElementById("totalPalabras").textContent =
+          juego.palabras.length;
+
+        dibujarTablero();
+        dibujarPalabras();
+        iniciarCronometro();
+        mostrarMensaje(
+          "¡Juego iniciado! Comienza a buscar palabras 🎯",
+          "exito"
+        );
+      });
+
+      /**
+       * EVENTO: Palabra validada como correcta
+       * ✅ ESTO OCURRE CUANDO EL SERVIDOR CONFIRMA QUE LA PALABRA ES VÁLIDA
+       */
+      socket.on("palabra_valida", (data) => {
+        console.log("✅ Palabra válida:", data.palabra);
+        juego.palabrasEncontradas.push(data.palabra);
+
+        // Guardar las coordenadas de esta palabra
+        juego.palabrasCoord[data.palabra] = data.coordenadas;
+
+        mostrarMensaje(
+          `✅ ¡Encontraste: ${data.palabra.toUpperCase()}!`,
+          "exito"
+        );
+        actualizarInterfaz();
+        juego.seleccion = [];
+        dibujarTablero();
+        dibujarPalabras();
+      });
+
+      /**
+       * EVENTO: La palabra no es válida
+       */
+      socket.on("palabra_invalida", (data) => {
+        console.log("❌ Palabra inválida");
+        mostrarMensaje("❌ No es una palabra válida en la lista", "error");
+        juego.seleccion = [];
+        dibujarTablero();
+      });
+
+      /**
+       * EVENTO: La palabra ya fue encontrada
+       */
+      socket.on("palabra_duplicada", (data) => {
+        console.log("⚠️ Palabra duplicada");
+        mostrarMensaje("⚠️ Ya encontraste esta palabra", "error");
+        juego.seleccion = [];
+        dibujarTablero();
+      });
+
+      /**
+       * EVENTO: Soluciones del juego (cuando hace clic en Resolver)
+       */
+      socket.on("soluciones", (data) => {
+        console.log("🔓 Soluciones recibidas");
+        mostrarSoluciones(data.soluciones);
+      });
+
+      socket.on("error", (data) => {
+        console.error("❌ Error del servidor:", data.mensaje);
+        mostrarMensaje(`Error: ${data.mensaje}`, "error");
+      });
+
+      /**
+       * EVENTO: El juego fue completado (todas las palabras encontradas)
+       */
+      socket.on("juego_completado", (data) => {
+        console.log("🎉 ¡JUEGO COMPLETADO!");
+        mostrarMensaje(
+          `🎉 ¡FELICIDADES! Completaste el juego en ${Math.floor(
+            data.tiempoTotal / 60
+          )}:${String(data.tiempoTotal % 60).padStart(2, "0")}`,
+          "exito"
+        );
+
+        // Detener el cronómetro
+        clearInterval(juego.cronometroIntervalo);
+
+        // Desactivar botones
+        document.getElementById("btnValidar").disabled = true;
+        document.getElementById("btnLimpiar").disabled = true;
+      });
+
+      // ====== FUNCIONES DE INTERFAZ ======
+
+      function iniciarJuego() {
+        const nombre = document.getElementById("nombreJugador").value.trim();
+        if (!nombre) {
+          alert("Por favor ingresa tu nombre");
+          return;
+        }
+
+        console.log("📤 Enviando solicitud de iniciar juego:", nombre);
+        socket.emit("iniciar_juego", { nombre: nombre });
+      }
+
+      function iniciarNuevoJuego() {
+        if (confirm("¿Deseas comenzar un nuevo juego?")) {
+          location.reload();
+        }
+      }
+
+      /**
+       * FUNCIÓN: Dibujar el tablero en HTML
+       *
+       * Para cada celda:
+       * 1. Si está en una palabra encontrada → VERDE
+       * 2. Si está seleccionada actualmente → AZUL
+       * 3. Si no está en nada → BLANCO
+       */
+      function dibujarTablero() {
+        const contenedor = document.getElementById("tablero");
+        contenedor.innerHTML = "";
+
+        for (let fila = 0; fila < juego.tablero.length; fila++) {
+          for (let col = 0; col < juego.tablero[fila].length; col++) {
+            const celda = document.createElement("div");
+            celda.className = "celda";
+            celda.textContent = juego.tablero[fila][col];
+            celda.dataset.fila = fila;
+            celda.dataset.col = col;
+
+            // Si esta celda pertenece a una palabra encontrada
+            const enEncontrada = verificarSiEstaEnPalabraEncontrada(fila, col);
+            if (enEncontrada) {
+              celda.classList.add("encontrada"); // ← VERDE
+            } else {
+              // Si NO está encontrada, verificar si está en selección actual
+              const enSeleccion = juego.seleccion.some(
+                ([f, c]) => f === fila && c === col
+              );
+              if (enSeleccion) {
+                celda.classList.add("seleccionada"); // ← AZUL
+              }
+            }
+
+            // Evento de clic
+            celda.addEventListener("click", () => {
+              seleccionarCelda(fila, col);
+            });
+
+            contenedor.appendChild(celda);
+          }
+        }
+      }
+
+      /**
+       * FUNCIÓN: Cuando el usuario hace clic en una celda
+       *
+       * Lógica:
+       * - Si ya está seleccionada, deseleccionarla (clic nuevamente)
+       * - Si es contigua a la última, agregarla
+       * - Si no es contigua, no permitir (mostrar error)
+       */
+      function seleccionarCelda(fila, col) {
+        // No permitir seleccionar celdas que ya están encontradas
+        if (verificarSiEstaEnPalabraEncontrada(fila, col)) {
+          mostrarMensaje(
+            "⚠️ Esta celda ya está en una palabra encontrada",
+            "error"
+          );
+          return;
+        }
+
+        if (juego.seleccion.length > 0) {
+          const ultima = juego.seleccion[juego.seleccion.length - 1];
+
+          // Si hace clic en la última celda seleccionada, quitar del final
+          if (ultima[0] === fila && ultima[1] === col) {
+            juego.seleccion.pop();
+            dibujarTablero();
+            actualizarContadorSeleccion();
+            return;
+          }
+
+          // Verificar si es contigua (distancia máxima de 1 en cualquier dirección)
+          // Esto permite: →, ↓, ↘, ←, ↑, ↙, etc
+          const esContigua =
+            Math.abs(ultima[0] - fila) <= 1 && Math.abs(ultima[1] - col) <= 1;
+
+          if (!esContigua) {
+            mostrarMensaje("⚠️ Las letras deben ser contiguas", "error");
+            return;
+          }
+
+          // Verificar que no estemos seleccionando la misma celda
+          const yaSeleccionada = juego.seleccion.some(
+            ([f, c]) => f === fila && c === col
+          );
+
+          if (yaSeleccionada) {
+            mostrarMensaje("⚠️ Ya seleccionaste esta celda", "error");
+            return;
+          }
+
+          juego.seleccion.push([fila, col]);
+        } else {
+          juego.seleccion.push([fila, col]);
+        }
+
+        dibujarTablero();
+        actualizarContadorSeleccion();
+      }
+
+      /**
+       * FUNCIÓN: VALIDAR LA PALABRA
+       *
+       * ✅ ESTO ENVÍA LAS COORDENADAS AL SERVIDOR
+       * El servidor valida si forman una palabra válida
+       */
+      function validarSeleccion() {
+        if (juego.seleccion.length === 0) {
+          mostrarMensaje("Selecciona al menos una letra", "error");
+          return;
+        }
+
+        console.log("📤 Enviando palabra al servidor:", juego.seleccion);
+
+        // 📡 AQUÍ SE ENVÍA AL SERVIDOR
+        socket.emit("validar_palabra", {
+          coordenadas: juego.seleccion,
+        });
+
+        // Desactivar botón mientras espera respuesta
+        document.getElementById("btnValidar").disabled = true;
+
+        // Reactivar botón después de 1 segundo
+        setTimeout(() => {
+          document.getElementById("btnValidar").disabled =
+            juego.seleccion.length === 0;
+        }, 1000);
+      }
+
+      /**
+       * FUNCIÓN: Limpiar la selección actual
+       */
+      function limpiarSeleccion() {
+        juego.seleccion = [];
+        actualizarContadorSeleccion();
+        dibujarTablero();
+        mostrarMensaje("✓ Selección limpiada", "exito");
+      }
+
+      /**
+       * FUNCIÓN: Actualizar el contador de letras seleccionadas
+       * También habilita/deshabilita los botones
+       */
+      function actualizarContadorSeleccion() {
+        const cantidad = juego.seleccion.length;
+        document.getElementById("contadorSeleccion").textContent = cantidad;
+
+        // Habilitar botones solo si hay selección
+        document.getElementById("btnValidar").disabled = cantidad === 0;
+        document.getElementById("btnLimpiar").disabled = cantidad === 0;
+      }
+
+      function dibujarPalabras() {
+        const contenedor = document.getElementById("listaPalabras");
+        contenedor.innerHTML =
+          '<div class="palabras-titulo">📝 Palabras a buscar:</div>';
+
+        juego.palabras.forEach((palabra) => {
+          const item = document.createElement("div");
+          item.className = "palabra-item";
+
+          if (juego.palabrasEncontradas.includes(palabra)) {
+            item.classList.add("encontrada");
+          }
+
+          item.textContent = palabra;
+
+          contenedor.appendChild(item);
+        });
+      }
+
+      function actualizarInterfaz() {
+        document.getElementById("contadorPalabras").textContent =
+          juego.palabrasEncontradas.length;
+      }
+
+      function iniciarCronometro() {
+        juego.cronometroIntervalo = setInterval(() => {
+          const ahora = Date.now();
+          const segundos = Math.floor((ahora - juego.tiempoInicio) / 1000);
+          const minutos = Math.floor(segundos / 60);
+          const segs = segundos % 60;
+
+          document.getElementById("cronometro").textContent = `${String(
+            minutos
+          ).padStart(2, "0")}:${String(segs).padStart(2, "0")}`;
+        }, 100);
+      }
+
+      function resolverJuego() {
+        if (confirm("¿Seguro que deseas ver la solución?")) {
+          socket.emit("resolver_juego");
+          mostrarMensaje("🔓 Mostrando todas las respuestas...", "exito");
+        }
+      }
+
+      /**
+       * FUNCIÓN CLAVE: Verificar si una celda está en una palabra encontrada
+       *
+       * Recorre todas las palabras encontradas en juego.palabrasCoord
+       * Si encuentra la celda [fila, col] en alguna palabra, retorna true
+       */
+      function verificarSiEstaEnPalabraEncontrada(fila, col) {
+        if (!juego.palabrasCoord) {
+          return false;
+        }
+
+        // Recorrer cada palabra encontrada
+        for (const palabra in juego.palabrasCoord) {
+          const coordenadas = juego.palabrasCoord[palabra];
+
+          // Recorrer cada coordenada de esa palabra
+          for (const [f, c] of coordenadas) {
+            if (f === fila && c === col) {
+              return true; // ✅ Esta celda está en una palabra encontrada
+            }
+          }
+        }
+        return false; // ❌ Esta celda NO está en ninguna palabra
+      }
+
+      function mostrarSoluciones(soluciones) {
+        console.log("🔓 Mostrando soluciones:", soluciones);
+
+        // Guardar todas las soluciones en juego.palabrasCoord
+        for (const palabra in soluciones) {
+          const coordenadas = soluciones[palabra];
+          if (coordenadas) {
+            juego.palabrasCoord[palabra] = coordenadas;
+            if (!juego.palabrasEncontradas.includes(palabra)) {
+              juego.palabrasEncontradas.push(palabra);
+            }
+          }
+        }
+
+        actualizarInterfaz();
+        dibujarTablero();
+        dibujarPalabras();
+        mostrarMensaje(
+          "✅ ¡Aquí están todas las palabras! (en verde)",
+          "exito"
+        );
+      }
+
+      function mostrarMensaje(texto, tipo) {
+        const elemento = document.getElementById("mensaje");
+        elemento.textContent = texto;
+        elemento.className = `mensaje ${tipo}`;
+        elemento.style.display = "block";
+
+        setTimeout(() => {
+          elemento.style.display = "none";
+        }, 3000);
+      }
+    </script>
+  </body>
+</html>
