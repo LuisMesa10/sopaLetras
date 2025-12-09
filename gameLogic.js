@@ -1,118 +1,105 @@
 // gameLogic.js
 
 /**
- * FUNCIÓN: Seleccionar N palabras aleatoriamente de una lista
- * 
- * ¿Qué hace?
- * - Recibe una lista de palabras y un número N
- * - Retorna N palabras aleatorias de esa lista
- * - Cada juego es diferente porque elige distintas palabras
+ * Seleccionar N palabras aleatoriamente de una lista (sin repetir)
  */
 function seleccionarPalabrasAleatorias(listaPalabras, cantidad) {
-  // Crear una copia de la lista para no modificar el original
   const copia = [...listaPalabras];
   const seleccionadas = [];
+  const max = Math.min(cantidad, copia.length);
 
-  // Seleccionar N palabras aleatorias
-  for (let i = 0; i < cantidad; i++) {
-    const indiceAleatorio = Math.floor(Math.random() * copia.length);
-    seleccionadas.push(copia[indiceAleatorio]);
-    // Eliminar la palabra seleccionada para no repetir
-    copia.splice(indiceAleatorio, 1);
+  for (let i = 0; i < max; i++) {
+    const idx = Math.floor(Math.random() * copia.length);
+    seleccionadas.push(copia[idx]);
+    copia.splice(idx, 1);
   }
 
   return seleccionadas;
 }
 
 /**
- * FUNCIÓN: Generar un tablero aleatorio de letras
- * 
- * ✅ MEJORADO: Garantiza que TODAS las palabras se coloquen
+ * Generar un tablero aleatorio de letras
+ * - Coloca las palabras (8 direcciones)
+ * - Usa palabra.length - 1 para comprobar límites correctamente
+ * - Permite solapamientos cuando la letra coincide
  */
 function generarTablero(palabras, size = 12) {
-  // Crear una matriz vacía (12x12)
-  let tablero = Array(size).fill(null).map(() => 
-    Array(size).fill('').map(() => 
-      String.fromCharCode(65 + Math.floor(Math.random() * 26)) // Letras aleatorias A-Z
+  // Matriz size x size con letras aleatorias
+  const tablero = Array.from({ length: size }, () =>
+    Array.from({ length: size }, () =>
+      String.fromCharCode(65 + Math.floor(Math.random() * 26))
     )
   );
 
-  // Guardar qué celdas ya tienen palabras (para no sobrescribir)
-  let celdasOcupadas = new Set();
+  const celdasOcupadas = new Set();
 
-  // Ordenar palabras por longitud (de más larga a más corta)
-  // Esto ayuda a que quepan todas más fácilmente
+  // Direcciones (8)
+  const direcciones = [
+    [0, 1],   // → derecha
+    [0, -1],  // ← izquierda
+    [1, 0],   // ↓ abajo
+    [-1, 0],  // ↑ arriba
+    [1, 1],   // ↘ diagonal
+    [1, -1],  // ↙ diagonal
+    [-1, 1],  // ↗ diagonal
+    [-1, -1]  // ↖ diagonal
+  ];
+
+  // Ordenar por longitud descendente para facilitar el encaje
   const palabrasOrdenadas = [...palabras].sort((a, b) => b.length - a.length);
 
-  // Colocar cada palabra en el tablero
-  for (const palabra of palabrasOrdenadas) {
+  for (const palabraRaw of palabrasOrdenadas) {
+    const palabra = palabraRaw.toUpperCase();
     let colocada = false;
     let intentos = 0;
+    const maxIntentos = 1000;
 
-    // Intentar 500 veces para asegurar que se coloca
-    while (!colocada && intentos < 500) {
+    while (!colocada && intentos < maxIntentos) {
+      intentos++;
+
+      const dir = direcciones[Math.floor(Math.random() * direcciones.length)];
+      const dirFila = dir[0], dirCol = dir[1];
+
+      // Elegir punto de inicio aleatorio
       const fila = Math.floor(Math.random() * size);
       const col = Math.floor(Math.random() * size);
-      
-      // Elegir dirección aleatoria
-      const direcciones = [
-        [0, 1],   // Derecha →
-        [1, 0],   // Abajo ↓
-        [1, 1],   // Diagonal ↘
-        [1, -1]   // Diagonal ↙ (✅ NUEVO: diagonal izquierda)
-      ];
-      
-      const [dirFila, dirCol] = direcciones[
-        Math.floor(Math.random() * direcciones.length)
-      ];
 
-      // Verificar si cabe la palabra
-      let cabe = true;
-      if (fila + dirFila * palabra.length >= size || 
-          fila + dirFila * palabra.length < 0 ||
-          col + dirCol * palabra.length >= size || 
-          col + dirCol * palabra.length < 0) {
-        cabe = false;
+      // Comprobar límites: la última letra estará en:
+      // fila + dirFila * (palabra.length - 1)
+      const ultimaFila = fila + dirFila * (palabra.length - 1);
+      const ultimaCol = col + dirCol * (palabra.length - 1);
+
+      if (ultimaFila < 0 || ultimaFila >= size || ultimaCol < 0 || ultimaCol >= size) {
+        continue; // No cabe
       }
 
-      if (!cabe) {
-        intentos++;
-        continue;
-      }
-
-      // Verificar que no sobrescriba otras palabras
-      let hayConflicto = false;
+      // Verificar conflictos (solo conflicto si hay letra distinta)
+      let conflicto = false;
       for (let i = 0; i < palabra.length; i++) {
         const f = fila + dirFila * i;
         const c = col + dirCol * i;
         const key = `${f},${c}`;
-        
-        // Si la celda ya está ocupada y no tiene la misma letra, hay conflicto
-        if (celdasOcupadas.has(key) && tablero[f][c] !== palabra[i].toUpperCase()) {
-          hayConflicto = true;
+        if (celdasOcupadas.has(key) && tablero[f][c] !== palabra[i]) {
+          conflicto = true;
           break;
         }
       }
-
-      if (hayConflicto) {
-        intentos++;
-        continue;
-      }
+      if (conflicto) continue;
 
       // Colocar la palabra
       for (let i = 0; i < palabra.length; i++) {
         const f = fila + dirFila * i;
         const c = col + dirCol * i;
-        tablero[f][c] = palabra[i].toUpperCase();
+        tablero[f][c] = palabra[i];
         celdasOcupadas.add(`${f},${c}`);
       }
 
       colocada = true;
-      console.log(`✓ Palabra colocada: ${palabra}`);
+      // console.log(`✓ Palabra colocada: ${palabra}`);
     }
 
     if (!colocada) {
-      console.warn(`❌ NO se pudo colocar: ${palabra} (después de 500 intentos)`);
+      console.warn(`❌ NO se pudo colocar: ${palabraRaw} (intentos: ${intentos})`);
     }
   }
 
@@ -120,83 +107,162 @@ function generarTablero(palabras, size = 12) {
 }
 
 /**
- * FUNCIÓN: Obtener las coordenadas de una palabra en el tablero
- * 
- * ¿Qué hace?
- * - Busca dónde está una palabra específica
- * - Retorna las posiciones (fila, columna) donde aparece
- * 
- * ✅ MEJORADO: También busca en direcciones inversas
+ * Obtener las coordenadas de una palabra en el tablero
+ * - Recorre todas las direcciones (incluidas inversas)
+ * - Retorna array de [fila,col] o null si no existe
  */
 function obtenerCoordenadasPalabra(tablero, palabra) {
-  const palabra_upper = palabra.toUpperCase();
+  const palabraUpper = palabra.toUpperCase();
   const size = tablero.length;
-  
-  // Todas las direcciones posibles (incluyendo inversas)
   const direcciones = [
-    [0, 1],    // Derecha →
-    [0, -1],   // Izquierda ←
-    [1, 0],    // Abajo ↓
-    [-1, 0],   // Arriba ↑
-    [1, 1],    // Diagonal ↘
-    [1, -1],   // Diagonal ↙
-    [-1, 1],   // Diagonal ↗
-    [-1, -1]   // Diagonal ↖
+    [0, 1], [0, -1], [1, 0], [-1, 0],
+    [1, 1], [1, -1], [-1, 1], [-1, -1]
   ];
 
   for (let fila = 0; fila < size; fila++) {
     for (let col = 0; col < size; col++) {
       for (const [dirFila, dirCol] of direcciones) {
         let encontrada = true;
-        let coordenadas = [];
+        const coords = [];
 
-        for (let i = 0; i < palabra_upper.length; i++) {
+        for (let i = 0; i < palabraUpper.length; i++) {
           const f = fila + dirFila * i;
           const c = col + dirCol * i;
-
-          if (f < 0 || f >= size || c < 0 || c >= size || 
-              tablero[f][c] !== palabra_upper[i]) {
+          if (f < 0 || f >= size || c < 0 || c >= size || tablero[f][c] !== palabraUpper[i]) {
             encontrada = false;
             break;
           }
-
-          coordenadas.push([f, c]);
+          coords.push([f, c]);
         }
 
-        if (encontrada) {
-          return coordenadas;
-        }
+        if (encontrada) return coords;
       }
     }
   }
 
-  return null; // Palabra no encontrada
+  return null;
 }
 
 /**
- * FUNCIÓN: Validar si un conjunto de coordenadas forma una palabra válida
- * 
- * ¿Qué hace?
- * - El cliente envía un array de [fila, col] que ha marcado
- * - Verificamos si esas coordenadas forman una palabra de nuestra lista
+ * Validar si un conjunto de coordenadas forma una palabra válida
+ * - Verifica que las coordenadas estén en línea recta y sean contiguas
+ * - Acepta la palabra en orden normal o inverso (por si el jugador selecciona al revés)
+ * - listaValida: array de palabras en minúscula
  */
 function validarPalabra(tablero, coordenadas, listaValida) {
-  if (coordenadas.length === 0) return false;
+  if (!Array.isArray(coordenadas) || coordenadas.length === 0) return false;
 
-  // Extraer las letras de las coordenadas
-  let palabra = '';
-  for (const [fila, col] of coordenadas) {
-    palabra += tablero[fila][col];
+  // Verificar que todas las coordenadas estén dentro del tablero
+  const size = tablero.length;
+  for (const [f, c] of coordenadas) {
+    if (f < 0 || f >= size || c < 0 || c >= size) return false;
   }
 
-  // Verificar si la palabra está en la lista de palabras válidas
-  return listaValida.includes(palabra.toLowerCase());
+  // Si solo hay 1 coordenada -> construir palabra de 1 letra y verificar
+  if (coordenadas.length === 1) {
+    const [f, c] = coordenadas[0];
+    const letra = tablero[f][c].toLowerCase();
+    return listaValida.includes(letra);
+  }
+
+  // Calcular dirección normalizada usando las dos primeras coordenadas
+  const [f0, c0] = coordenadas[0];
+  const [f1, c1] = coordenadas[1];
+  const df = f1 - f0;
+  const dc = c1 - c0;
+
+  // Normalizar a -1,0,1
+  const dirFila = Math.sign(df);
+  const dirCol = Math.sign(dc);
+
+  // Asegurar que (dirFila, dirCol) esté en {-1,0,1} y que la distancia sea 1 en sentido Manhattan/admisible
+  if (!(Math.abs(df) === Math.abs(dirFila) || Math.abs(df) === 1) || !(Math.abs(dc) === Math.abs(dirCol) || Math.abs(dc) === 1)) {
+    // no se pudo normalizar correctamente (defensivo), pero mejor seguir comprobando estrictamente:
+  }
+
+  // Verificar que todas las coordenadas sigan la misma dirección y sean contiguas
+  for (let i = 0; i < coordenadas.length; i++) {
+    const expectedF = f0 + dirFila * i;
+    const expectedC = c0 + dirCol * i;
+    const [fi, ci] = coordenadas[i];
+    if (fi !== expectedF || ci !== expectedC) {
+      // Puede que las coords estén en orden inverso (jugador seleccionó desde el final)
+      // Intentamos comprobar usando la última como inicio (reverse)
+      const last = coordenadas[coordenadas.length - 1];
+      const [fl, cl] = last;
+      const df2 = fl - coordenadas[coordenadas.length - 2][0];
+      const dc2 = cl - coordenadas[coordenadas.length - 2][1];
+      const dirFilaRev = Math.sign(df2);
+      const dirColRev = Math.sign(dc2);
+
+      // comprobar con orden invertido
+      for (let j = 0; j < coordenadas.length; j++) {
+        const expectedFr = fl + dirFilaRev * j * -1; // -1 porque vamos hacia atrás
+        const expectedCr = cl + dirColRev * j * -1;
+        const [fj, cj] = coordenadas[j];
+        // si cualquiera no coincide con la suposición rev => no es línea recta/contigua
+        if (fj !== expectedFr || cj !== expectedCr) {
+          return false;
+        }
+      }
+      // si pasa la verificación invertida, seguimos
+      break;
+    }
+  }
+
+  // Construir palabra a partir de coordenadas tal y como vienen
+  let palabra = '';
+  for (const [f, c] of coordenadas) palabra += tablero[f][c];
+
+  const palabraLower = palabra.toLowerCase();
+  const palabraReverseLower = palabra.split('').reverse().join('').toLowerCase();
+
+  // Verificar contra la lista válida (aceptar normal o invertida)
+  return listaValida.includes(palabraLower) || listaValida.includes(palabraReverseLower);
 }
 
-// Exportar las funciones para usarlas en server.js
+/**
+ * Asignar colores pastel bonitos a un array de palabras
+ * - Devuelve [{texto, color}, ...]
+ * - Intenta asignar colores distintos dentro de la misma partida
+ */
+function asignarColores(palabras) {
+  const paletaPastel = [
+    "#1F75FE", // Azul vibrante
+  "#FFCA3A", // Amarillo dorado vivo
+  "#4CAF50", // Verde brillante
+  "#FF595E", // Rojo coral fuerte
+  "#8C52FF", // Morado eléctrico
+  "#00BBF9", // Azul celeste intenso
+  "#F15BB5", // Rosa vibrante
+  "#43AA8B", // Verde esmeralda suave
+  "#F8961E", // Naranja cálido vibrante
+  "#577590", // Azul acero moderno
+  "#FF7F50", // Coral anaranjado vivo
+  "#6A4C93"  // Morado profundo
+
+  ];
+
+  // Shuffle (Fisher-Yates) para seleccionar colores aleatorios pero sin repetir hasta agotar paleta
+  const paleta = [...paletaPastel];
+  for (let i = paleta.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [paleta[i], paleta[j]] = [paleta[j], paleta[i]];
+  }
+
+  const resultados = palabras.map((texto, idx) => {
+    const color = paleta[idx % paleta.length];
+    return { texto, color };
+  });
+
+  return resultados;
+}
+
+// Exportar funciones
 module.exports = {
   seleccionarPalabrasAleatorias,
   generarTablero,
   obtenerCoordenadasPalabra,
-  validarPalabra
+  validarPalabra,
+  asignarColores
 };

@@ -163,6 +163,49 @@
         background: #229954;
       }
 
+      #selectorDificultad {
+  margin: 15px 0;
+  text-align: center;
+}
+
+#selectorDificultad h3 {
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.btn-dif {
+  padding: 10px 20px;
+  margin: 5px;
+  border: none;
+  cursor: pointer;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: bold;
+  transition: 0.2s;
+  color: #333;
+}
+
+.btn-dif[data-dif="facil"] {
+  background-color: #00C853; /* Verde neón / verde vivo */
+  color: white;
+}
+
+.btn-dif[data-dif="medio"] {
+  background-color: #FFD600; /* Amarillo fuerte */
+  color: #333; /* Mejor contraste que blanco */
+}
+
+.btn-dif[data-dif="dificil"] {
+  background-color: #D50000; /* Rojo fuerte e intenso */
+  color: white;
+}
+
+
+.btn-dif.activa {
+  outline: 3px solid #555;
+  transform: scale(1.08);
+}
+
       .info-seleccion {
         font-size: 0.95em;
         color: #667eea;
@@ -184,7 +227,6 @@
 
       .tablero {
         display: grid;
-        grid-template-columns: repeat(12, 30px);
         gap: 2px;
         background: #ecf0f1;
         padding: 10px;
@@ -364,7 +406,17 @@
         />
         <button onclick="iniciarJuego()">▶️ Iniciar Juego</button>
 
-        <div class="instrucciones" style="margin-top: 30px">
+        <div id="selectorDificultad">
+  <h3>Selecciona la dificultad:</h3>
+
+  <button class="btn-dif" data-dif="facil">Fácil</button>
+  <button class="btn-dif" data-dif="medio">Medio</button>
+  <button class="btn-dif" data-dif="dificil">Difícil</button>
+
+  <!-- Guarda la dificultad elegida -->
+  <input type="hidden" id="selectDificultad" value="medio">
+</div>
+<div class="instrucciones" style="margin-top: 30px">
           <h3>📋 Cómo jugar:</h3>
           <ul style="margin-left: 20px">
             <li>Haz clic en las letras para seleccionarlas en orden</li>
@@ -375,7 +427,7 @@
             <li>Presiona "✓ Validar" para enviar tu palabra al servidor</li>
             <li>
               Si es correcta, se mostrará en
-              <span style="color: #27ae60; font-weight: bold">VERDE</span>
+              <span style="color: #27ae60; font-weight: bold">un color diferente</span>
             </li>
             <li>Usa "✕ Limpiar" para borrar la selección actual</li>
             <li>Presiona "🔓 Resolver" para ver todas las respuestas</li>
@@ -457,6 +509,27 @@
         cronometroIntervalo: null,
       };
 
+      const coloresPastelBonitos = [
+  "#1F75FE", // Azul vibrante
+  "#FFCA3A", // Amarillo dorado vivo
+  "#4CAF50", // Verde brillante
+  "#FF595E", // Rojo coral fuerte
+  "#8C52FF", // Morado eléctrico
+  "#00BBF9", // Azul celeste intenso
+  "#F15BB5", // Rosa vibrante
+  "#43AA8B", // Verde esmeralda suave
+  "#F8961E", // Naranja cálido vibrante
+  "#577590", // Azul acero moderno
+  "#FF7F50", // Coral anaranjado vivo
+  "#6A4C93"  // Morado profundo
+];
+
+function colorAleatorio() {
+  return coloresPastelBonitos[
+    Math.floor(Math.random() * coloresPastelBonitos.length)
+  ];
+}
+
       // ====== EVENTOS DE SOCKET ======
 
       socket.on("connect", () => {
@@ -493,6 +566,9 @@
        * ✅ ESTO OCURRE CUANDO EL SERVIDOR CONFIRMA QUE LA PALABRA ES VÁLIDA
        */
       socket.on("palabra_valida", (data) => {
+        if (!juego.colores) juego.colores = {};
+        juego.colores[data.palabra] = colorAleatorio();
+
         console.log("✅ Palabra válida:", data.palabra);
         juego.palabrasEncontradas.push(data.palabra);
 
@@ -532,10 +608,48 @@
       /**
        * EVENTO: Soluciones del juego (cuando hace clic en Resolver)
        */
-      socket.on("soluciones", (data) => {
-        console.log("🔓 Soluciones recibidas");
-        mostrarSoluciones(data.soluciones);
-      });
+      // REEMPLAZAR con esto
+socket.on("soluciones", (data) => {
+  console.log("🔓 Soluciones recibidas", data);
+
+  // 1) Si el servidor envía palabrasConColor, actualizamos juego.palabras
+  //    (esto asegura que la lista de la derecha muestre texto + color)
+  if (data.palabrasConColor && Array.isArray(data.palabrasConColor)) {
+    juego.palabras = data.palabrasConColor.map(p => ({ texto: p.texto, color: p.color }));
+  }
+
+  // 2) Inicializamos/actualizamos el mapa de colores por palabra (keys en minúscula)
+  if (!juego.colores) juego.colores = {};
+  if (data.palabrasConColor && Array.isArray(data.palabrasConColor)) {
+    data.palabrasConColor.forEach(p => {
+      const key = String(p.texto).toLowerCase();
+      juego.colores[key] = p.color;
+    });
+  }
+
+  // 3) Procesar las soluciones (data.soluciones) y guardarlas en juego.palabrasCoord
+  const soluciones = data.soluciones || {};
+  for (const palabra in soluciones) {
+    const coords = soluciones[palabra];
+    if (coords && coords.length) {
+      // usar la palabra tal como viene (en tu servidor las guardas en minúsculas)
+      juego.palabrasCoord[palabra] = coords;
+
+      // si no está en encontradas, agregarla
+      if (!juego.palabrasEncontradas.includes(palabra)) {
+        juego.palabrasEncontradas.push(palabra);
+      }
+    }
+  }
+
+  // 4) Actualizar UI
+  actualizarInterfaz();
+  dibujarTablero();
+  dibujarPalabras();
+
+  mostrarMensaje("✅ ¡Aquí están todas las palabras y colores!", "exito");
+});
+
 
       socket.on("error", (data) => {
         console.error("❌ Error del servidor:", data.mensaje);
@@ -571,8 +685,19 @@
           return;
         }
 
-        console.log("📤 Enviando solicitud de iniciar juego:", nombre);
-        socket.emit("iniciar_juego", { nombre: nombre });
+        // Leer la dificultad seleccionada
+        const dificultad =
+          document.getElementById("selectDificultad").value || "medio";
+
+        console.log(
+          "📤 Enviando solicitud de iniciar juego:",
+          nombre,
+          dificultad
+        );
+        socket.emit("iniciar_juego", {
+          nombre: nombre,
+          dificultad: dificultad,
+        });
       }
 
       function iniciarNuevoJuego() {
@@ -593,6 +718,10 @@
         const contenedor = document.getElementById("tablero");
         contenedor.innerHTML = "";
 
+        contenedor.style.gridTemplateColumns =
+  `repeat(${juego.tablero.length}, 30px)`;
+
+
         for (let fila = 0; fila < juego.tablero.length; fila++) {
           for (let col = 0; col < juego.tablero[fila].length; col++) {
             const celda = document.createElement("div");
@@ -604,7 +733,12 @@
             // Si esta celda pertenece a una palabra encontrada
             const enEncontrada = verificarSiEstaEnPalabraEncontrada(fila, col);
             if (enEncontrada) {
-              celda.classList.add("encontrada"); // ← VERDE
+              const palabraEntrante = obtenerPalabraDeCoordenada(fila, col);
+              if (palabraEntrante && juego.colores[palabraEntrante]) {
+                celda.style.backgroundColor = juego.colores[palabraEntrante];
+                celda.style.color = "white";
+                celda.style.borderColor = juego.colores[palabraEntrante];
+              }
             } else {
               // Si NO está encontrada, verificar si está en selección actual
               const enSeleccion = juego.seleccion.some(
@@ -624,6 +758,17 @@
           }
         }
       }
+      function obtenerPalabraDeCoordenada(fila, col) {
+  for (const palabra in juego.palabrasCoord) {
+    for (const [f, c] of juego.palabrasCoord[palabra]) {
+      if (f === fila && c === col) {
+        return palabra;
+      }
+    }
+  }
+  return null;
+}
+
 
       /**
        * FUNCIÓN: Cuando el usuario hace clic en una celda
@@ -736,23 +881,27 @@
       }
 
       function dibujarPalabras() {
-        const contenedor = document.getElementById("listaPalabras");
-        contenedor.innerHTML =
-          '<div class="palabras-titulo">📝 Palabras a buscar:</div>';
+  const contenedor = document.getElementById("listaPalabras");
+  contenedor.innerHTML =
+    '<div class="palabras-titulo">📝 Palabras a buscar:</div>';
 
-        juego.palabras.forEach((palabra) => {
-          const item = document.createElement("div");
-          item.className = "palabra-item";
+  juego.palabras.forEach((p) => {
+    const item = document.createElement("div");
+    item.className = "palabra-item";
 
-          if (juego.palabrasEncontradas.includes(palabra)) {
-            item.classList.add("encontrada");
-          }
+    // Si ya está encontrada, aplicar clase
+    if (juego.palabrasEncontradas.includes(p.texto.toLowerCase())) {
+      item.classList.add("encontrada");
+    }
 
-          item.textContent = palabra;
+    // Mostrar texto y color asignado
+    item.textContent = p.texto;
+    item.style.color = p.color;
 
-          contenedor.appendChild(item);
-        });
-      }
+    contenedor.appendChild(item);
+  });
+}
+
 
       function actualizarInterfaz() {
         document.getElementById("contadorPalabras").textContent =
@@ -837,6 +986,24 @@
           elemento.style.display = "none";
         }, 3000);
       }
+
+      // ===== Selección de dificultad =====
+document.querySelectorAll(".btn-dif").forEach(btn => {
+  btn.addEventListener("click", () => {
+    // Remover la clase activa
+    document.querySelectorAll(".btn-dif").forEach(b => b.classList.remove("activa"));
+
+    // Agregar la clase activa al botón actual
+    btn.classList.add("activa");
+
+    // Guardar dificultad seleccionada
+    const dif = btn.getAttribute("data-dif");
+    document.getElementById("selectDificultad").value = dif;
+
+    console.log("🎚 Dificultad seleccionada:", dif);
+  });
+});
+
     </script>
   </body>
 </html>

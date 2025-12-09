@@ -18,6 +18,13 @@ const io = socketIo(server, {
 const palabrasData = JSON.parse(fs.readFileSync('palabras.json', 'utf-8'));
 const listaPalabrasCompleta = palabrasData.palabras;
 
+// Configuraciones por dificultad (size = tamaño del tablero)
+const configuracionesDificultad = {
+  facil:  { cantidadPalabras: 6,  size: 10 },
+  medio:  { cantidadPalabras: 8,  size: 12 },
+  dificil:{ cantidadPalabras: 12, size: 14 }
+};
+
 // ============================================
 // ESTRUCTURA DE DATOS: JUGADORES EN MEMORIA
 // ============================================
@@ -77,40 +84,53 @@ io.on('connection', (socket) => {
    * 4. Enviarle el tablero y las 6 palabras a encontrar
    * 5. Iniciar su cronómetro
    */
-  socket.on('iniciar_juego', (data) => {
-    console.log(`🎮 Iniciar juego solicitado por: ${data.nombre}`);
+// Cuando el cliente solicita iniciar un juego
+socket.on('iniciar_juego', (data) => {
 
-    // 1. ✅ SELECCIONAR 6 PALABRAS ALEATORIAMENTE
-    const palabrasDelJuego = gameLogic.seleccionarPalabrasAleatorias(listaPalabrasCompleta, 6);
-    console.log(`   Palabras seleccionadas: ${palabrasDelJuego.join(', ')}`);
+  const nombre = data.nombre || 'Jugador';
+  const dificultad = data.dificultad || 'medio';   // <-- IMPORTANTE
+  console.log(`🎮 ${nombre} solicita iniciar juego (dificultad: ${dificultad})`);
 
-    // 2. Generar tablero con SOLO esas 6 palabras
-    const tablero = gameLogic.generarTablero(palabrasDelJuego, 12);
+  // 1) Configuración según dificultad
+  const config = configuracionesDificultad[dificultad] || configuracionesDificultad.medio;
 
-    // 3. Crear objeto del jugador
-    const jugador = {
-      socketId: socket.id,
-      nombre: data.nombre,
-      palabrasDelJuego: palabrasDelJuego, // ✅ NUEVO: Guardar las 6 palabras de este juego
-      tablero: tablero,
-      palabrasEncontradas: [],
-      palabrasCoord: {},
-      tiempoInicio: Date.now(),
-      activo: true
-    };
+  // 2) Seleccionar N palabras
+  const palabrasSeleccionadas = gameLogic.seleccionarPalabrasAleatorias(
+      listaPalabrasCompleta,
+      config.cantidadPalabras
+  );
 
-    // 4. Guardar en memoria
-    jugadores[socket.id] = jugador;
+  // 3) Asignar colores a cada palabra
+  const palabrasConColor = gameLogic.asignarColores(palabrasSeleccionadas);
 
-    // 5. Enviar al cliente su tablero y las 6 palabras (NO las 12)
-    socket.emit('juego_iniciado', {
-      tablero: tablero,
-      palabras: palabrasDelJuego, // ✅ CAMBIO: Enviar solo las 6 palabras
-      tiempoInicio: jugador.tiempoInicio
-    });
+  // 4) Generar tablero con el tamaño correcto SEGÚN dificultad
+  const palabrasSoloTexto = palabrasConColor.map(p => p.texto);
+  const tablero = gameLogic.generarTablero(palabrasSoloTexto, config.size);
 
-    console.log(`   Tablero generado para ${data.nombre}`);
+  // 5) Guardar estado del jugador
+  jugadores[socket.id] = {
+    socketId: socket.id,
+    nombre,
+    palabrasDelJuego: palabrasSeleccionadas.map(p => p.toLowerCase()),
+    tablero,
+    palabrasEncontradas: [],
+    palabrasCoord: {},
+    palabrasConColor,
+    tiempoInicio: Date.now(),
+    activo: true
+  };
+
+  // 6) Enviar al cliente
+  socket.emit('juego_iniciado', {
+    tablero,
+    palabras: palabrasConColor,
+    tiempoInicio: jugadores[socket.id].tiempoInicio
   });
+
+  console.log(`   Palabras enviadas a ${nombre}: ${palabrasSeleccionadas.join(', ')}`);
+});
+
+
 
   /**
    * EVENTO: El cliente marca un conjunto de coordenadas
@@ -121,63 +141,54 @@ io.on('connection', (socket) => {
    * 2. Si es válida, guardarla en palabrasEncontradas
    * 3. Enviar respuesta al cliente
    */
-  socket.on('validar_palabra', (data) => {
-    const jugador = jugadores[socket.id];
+  // Cuando el cliente envía coordenadas para validar palabra
+socket.on('validar_palabra', (data) => {
+  const jugador = jugadores[socket.id];
+  if (!jugador) {
+    socket.emit('palabra_invalida', { mensaje: 'Jugador no encontrado' });
+    return;
+  }
 
-    if (!jugador) {
-      socket.emit('error', { mensaje: 'Jugador no encontrado' });
-      return;
+  // Validar con tu función (que espera tablero, coordenadas y lista de palabras válidas)
+  const esValida = gameLogic.validarPalabra(jugador.tablero, data.coordenadas, jugador.palabrasDelJuego);
+
+  if (esValida) {
+    // reconstruir la palabra desde las coordenadas
+    let palabra = '';
+    for (const [fila, col] of data.coordenadas) {
+      palabra += jugador.tablero[fila][col];
     }
+    palabra = palabra.toLowerCase();
 
-    // Validar si las coordenadas forman una palabra válida
-    // ✅ CAMBIO: Usar palabrasDelJuego en lugar de listaPalabrasCompleta
-    const esValida = gameLogic.validarPalabra(
-      jugador.tablero,
-      data.coordenadas,
-      jugador.palabrasDelJuego
-    );
+    // verificar si ya fue encontrada
+    if (!jugador.palabrasEncontradas.includes(palabra)) {
+      jugador.palabrasEncontradas.push(palabra);
+      jugador.palabrasCoord[palabra] = data.coordenadas;
 
-    if (esValida) {
-      // Obtener la palabra completa
-      let palabra = '';
-      for (const [fila, col] of data.coordenadas) {
-        palabra += jugador.tablero[fila][col];
-      }
-      palabra = palabra.toLowerCase();
+      // buscar color de la palabra para enviarla al cliente
+      const match = jugador.palabrasConColor.find(p => p.texto.toLowerCase() === palabra);
+      const color = match ? match.color : '#27ae60';
 
-      // Verificar que no la haya encontrado antes
-      if (!jugador.palabrasEncontradas.includes(palabra)) {
-        jugador.palabrasEncontradas.push(palabra);
-        
-        // Guardar las coordenadas de esta palabra
-        jugador.palabrasCoord[palabra] = data.coordenadas;
-        
-        console.log(`✅ ${jugador.nombre} encontró: ${palabra}`);
+      socket.emit('palabra_valida', {
+        palabra,
+        coordenadas: data.coordenadas,
+        color,
+        palabrasEncontradas: jugador.palabrasEncontradas
+      });
 
-        // Enviar confirmación al cliente
-        socket.emit('palabra_valida', {
-          palabra: palabra,
-          coordenadas: data.coordenadas,
-          palabrasEncontradas: jugador.palabrasEncontradas
-        });
-
-        // ✅ NUEVO: Verificar si completó todas las palabras
-        if (jugador.palabrasEncontradas.length === jugador.palabrasDelJuego.length) {
-          const tiempoTotal = Math.floor((Date.now() - jugador.tiempoInicio) / 1000);
-          console.log(`🎉 ${jugador.nombre} ¡COMPLETÓ EL JUEGO! (tiempo: ${tiempoTotal}s)`);
-          socket.emit('juego_completado', {
-            tiempoTotal: tiempoTotal,
-            palabrasEncontradas: jugador.palabrasEncontradas.length
-          });
-        }
-      } else {
-        socket.emit('palabra_duplicada', { mensaje: 'Ya encontraste esta palabra' });
+      // verificar si completó todas
+      if (jugador.palabrasEncontradas.length === jugador.palabrasDelJuego.length) {
+        const tiempoTotal = Math.floor((Date.now() - jugador.tiempoInicio) / 1000);
+        socket.emit('juego_completado', { tiempoTotal });
       }
     } else {
-      console.log(`❌ ${jugador.nombre} intentó palabra inválida`);
-      socket.emit('palabra_invalida', { mensaje: 'No es una palabra válida' });
+      socket.emit('palabra_duplicada', { mensaje: 'Ya encontraste esta palabra' });
     }
-  });
+  } else {
+    socket.emit('palabra_invalida', { mensaje: 'No es una palabra válida' });
+  }
+});
+
 
   /**
    * EVENTO: El cliente solicita resolver el juego
@@ -189,34 +200,27 @@ io.on('connection', (socket) => {
    * 3. Enviar todas las soluciones al cliente
    */
   socket.on('resolver_juego', () => {
-    const jugador = jugadores[socket.id];
+  const jugador = jugadores[socket.id];
+  if (!jugador) {
+    socket.emit('error', { mensaje: 'Jugador no encontrado' });
+    return;
+  }
 
-    if (!jugador) {
-      socket.emit('error', { mensaje: 'Jugador no encontrado' });
-      return;
-    }
+  const soluciones = {};
+  for (const palabra of jugador.palabrasDelJuego) {
+    const coords = gameLogic.obtenerCoordenadasPalabra(jugador.tablero, palabra);
+    soluciones[palabra] = coords;
+  }
 
-    console.log(`🔓 ${jugador.nombre} solicita resolver`);
-
-    // Generar mapa de soluciones
-    const soluciones = {};
-    // ✅ CAMBIO: Usar palabrasDelJuego en lugar de listaPalabrasCompleta
-    for (const palabra of jugador.palabrasDelJuego) {
-      const coordenadas = gameLogic.obtenerCoordenadasPalabra(
-        jugador.tablero,
-        palabra
-      );
-      soluciones[palabra] = coordenadas;
-    }
-
-    // Enviar soluciones al cliente
-    socket.emit('soluciones', {
-      soluciones: soluciones,
-      tiempoTranscurrido: Date.now() - jugador.tiempoInicio
-    });
-
-    jugador.activo = false;
+  socket.emit('soluciones', {
+    soluciones,
+    tiempoTranscurrido: Math.floor((Date.now() - jugador.tiempoInicio) / 1000),
+    palabrasConColor: jugador.palabrasConColor
   });
+
+  jugador.activo = false;
+});
+
 
   /**
    * EVENTO: El cliente se desconecta
@@ -225,7 +229,7 @@ io.on('connection', (socket) => {
    * 1. Eliminamos al jugador de la memoria
    * 2. Registramos cuánto tiempo jugó
    */
-  socket.on('disconnect', () => {
+    socket.on('disconnect', () => {
     const jugador = jugadores[socket.id];
 
     if (jugador) {
@@ -234,7 +238,9 @@ io.on('connection', (socket) => {
       delete jugadores[socket.id];
     }
   });
-});
+
+});  
+
 
 // ============================================
 // INICIAR SERVIDOR
